@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
-
+const moment = require('moment')
 require('dotenv').config()
 
 app.use(cors())
@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema({
     _id: false,
     description: {
       type: String,
+      default:"",
       required: true
     },
     duration: {
@@ -38,7 +39,7 @@ const userSchema = new mongoose.Schema({
 })
 const userModel = mongoose.model('user',userSchema)
 
-
+userModel.deleteMany({}).then(res=>console.log(res,"this"))
 // show new user
 
 app.get('/api/users/',(req,res)=>{
@@ -65,16 +66,14 @@ app.post('/api/users/:_id/exercises',(req,res)=>{
   let userId = req.params._id
   let date = req.body.date
   let {description, duration} = req.body
-
-  if (date != ''){
-   date = new Date(date)
-  } 
+  console.log(date,"this is the date we are recieving")
+  
   userModel.findOneAndUpdate({_id: userId}, {
     $push: {
       exercise: {
         description: description,
         duration: Number(duration),
-        date: new Date(date).toDateString()
+        date: date !== undefined?new Date(date).toDateString():new Date().toDateString()
       }
     }
   }, {new: true}, (err, data) => {
@@ -103,20 +102,28 @@ app.get('/api/users/:_id/logs',(req,res)=>{
     if(data == null) {
       res.send("User not found")
     } else {
+      console.log(from,to,"this")
       if(from && to) {
         
         res.send({
           _id: userId,
           username: data.username,
           count: limit || count,
-          log: data.exercise.filter(e => e.date >= from && e.date <= to).slice(0, limit || count)
+          log: data.exercise.filter((e)=>{
+            let elementDate = new Date(e.date)
+
+            console.log(elementDate,"this is element date")
+        
+            return(elementDate.getTime() >= from.getTime() && elementDate.getTime() <= to.getTime())}
+            ).slice(0, limit || count)
         })
       } else {
+        console.log("this is serving")
         res.send({
           username: data.username,
           count: limit || count,
           _id: userId,
-          log: data.exercise.slice(0, limit || count)
+          log: data.exercise?.slice(0, limit || count)
         })
       }
     }
